@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9fc"><meta name="description" content="Central de downloads grátis da Studio.Ryu: presets, templates, músicas, vídeos, imagens, fontes e aplicativos para editores e motion designers.">
+  <title>Downloads grátis — Studio.Ryu</title>
+  <link rel="icon" href="assets/ryu-tiger-avatar.jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"><script src="script.js" defer></script><script src="downloads.js" defer></script>
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="header">
+    <a class="brand" href="index.html"><img src="assets/ryu-tiger-avatar.jpeg" alt="" class="brand-avatar"><span>Studio<span class="purple">.Ryu</span><small>IDEIAS QUE GANHAM VIDA</small></span></a>
+    <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false"><i></i><i></i></button>
+    <nav class="nav"><a href="index.html#edicoes">Edições</a><a href="index.html#cursos">Cursos</a><a href="index.html#plugin">Plugin</a><a href="downloads.html" class="active">Downloads grátis</a><a href="index.html#jogo">Jogo</a></nav>
+    <a class="header-cta" href="index.html#contato">Vamos conversar <span>↗</span></a>
+  </header>
+  <main id="top">
+    <section class="page-hero dl-hero wrap">
+      <div class="reveal"><a class="crumb" href="index.html">← Voltar ao início</a>
+        <div class="eyebrow" style="margin-top:34px"><span class="dot"></span> RYU CREATIVE TOOLBOX · TUDO GRÁTIS</div>
+        <h1>Pega o carrinho<br>e <span class="purple">leva.</span></h1>
+        <p class="hero-text">Presets, templates, músicas, vídeos, imagens, fontes e aplicativos para estudar, adaptar e usar nos seus projetos. Escolha uma categoria, busque pelo que precisa e monte o seu carrinho.</p>
+        <div class="dl-stats"><div><b id="st-files">0</b><span>ARQUIVOS</span></div><div><b id="st-cats">0</b><span>CATEGORIAS</span></div><div><b id="st-ready">0</b><span>PRONTOS PARA BAIXAR</span></div></div>
+        <div class="hero-cta"><a class="btn dark-btn" href="#categorias">Explorar categorias <span>↘</span></a><a class="plain-link" href="#arquivos">Ir direto aos arquivos <span>↘</span></a></div>
+      </div>
+      <div class="page-hero-art reveal"><div class="art-grid"></div><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="mascot" data-says="Tudo de graça, pode levar!|Enche o carrinho! 🛒|Clique numa categoria!|Os arquivos saem aos poucos."><img src="assets/tigre-downloads.jpeg" alt="Tigre de óculos empurrando um carrinho cheio de downloads"></div><div class="float-tag tag-one">✳ <span>Tudo grátis</span></div><div class="float-tag tag-two"><span class="status-pill"></span> Novidades em breve</div></div>
+    </section>
+
+    <section class="wrap sec" id="categorias"><div class="section-heading reveal"><div><span class="eyebrow-number">01 / CATEGORIAS</span><h2>Escolha o<br><span class="purple">corredor.</span></h2></div><p>Clique numa categoria para ver<br>só o que interessa.</p></div>
+      <div class="cat-grid" id="cat-grid"></div>
+      <noscript><p class="fine-print">Ative o JavaScript para navegar pelas categorias.</p></noscript></section>
+
+    <section class="wrap sec" id="arquivos" style="padding-bottom:20px"><div class="section-heading reveal"><div><span class="eyebrow-number">02 / ARQUIVOS</span><h2>Ache e<br><span class="purple">leve.</span></h2></div><p>Busque por nome ou etiqueta e<br>adicione ao carrinho com 🛒.</p></div>
+      <div class="dl-toolbar"><label class="dl-search"><input id="dl-q" type="search" placeholder="Buscar: transição, legenda, trilha, fonte…" autocomplete="off" aria-label="Buscar downloads"><kbd>/</kbd></label><div class="dl-chips" id="dl-chips"></div></div>
+      <div class="cat-info" id="cat-info"></div>
+      <div class="dl-grid" id="dl-grid" aria-live="polite"></div>
+      <p class="download-note" id="dl-note">Os arquivos são liberados conforme ficam prontos. Quer ser avisado? Clique em “Avisar quando sair” no arquivo que você quer.</p>
+    </section>
+
+    <section class="contact wrap tight"><div class="contact-panel reveal"><div class="contact-orb"></div><span class="eyebrow-number">NÃO ACHOU?</span><h2>Sugira o<br><span>próximo.</span></h2><p>Falta algum preset, template ou recurso na lista? Conte pra Ryu no WhatsApp e ele pode entrar nos próximos downloads.</p><div class="contact-actions"><a class="btn light-btn" href="https://wa.me/5571983716396?text=Oi%20Enzo%21%20Tenho%20uma%20sugest%C3%A3o%20para%20os%20downloads%20gr%C3%A1tis%20da%20Studio.Ryu." target="_blank" rel="noreferrer">Sugerir pelo WhatsApp <span>↗</span></a></div><span class="contact-ghost">R.</span></div></section>
+  </main>
+  <div class="cart-bar" id="cart-bar" role="status"><span id="cart-text"></span><button type="button" id="cart-view">Ver carrinho</button><button type="button" class="clear" id="cart-clear">Limpar</button></div>
+  <footer class="footer wrap"><a class="brand" href="index.html#inicio"><img src="assets/ryu-tiger-avatar.jpeg" alt="" class="brand-avatar"><span>Studio<span class="purple">.Ryu</span><small>IDEIAS QUE GANHAM VIDA</small></span></a><span>© <span id="year"></span> Enzo Silva de Araujo · Ryu Studios<br><span class="paw-hint"><button type="button" data-paw-hint>🐾 psst… tem 5 patinhas escondidas pelo site</button></span></span><a href="#top">Voltar ao topo ↑</a></footer>
+</body></html>

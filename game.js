@@ -1,60 +1,88 @@
-/* RYU RUN — corra com o tigre, pule os glitches e pegue 5 ✳ para ativar o Modo Fogo */
+/* RYU RUN — corra com o tigre, pule os glitches e pegue 5 ✳ para ativar o Modo Fogo
+   Agora com sprites animados (corrida, pulo e aterrissagem) e ranking de quem tenta. */
 (() => {
   const stage = document.getElementById('game-stage');
   if (!stage) return;
+
+  /* ============================================================
+     RANKING GLOBAL (opcional)
+     Sem nada aqui, o ranking funciona só neste navegador.
+     Para ranking compartilhado entre todo mundo, crie um Firebase
+     Realtime Database (grátis) e cole a URL abaixo, por exemplo:
+     'https://meu-projeto-default-rtdb.firebaseio.com'
+     (veja o README para o passo a passo e as regras do banco)
+     ============================================================ */
+  const RANK_URL = '';
+
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const overlay = document.getElementById('game-overlay'), ovTitle = document.getElementById('g-title'),
     ovText = document.getElementById('g-text'), ovBtn = document.getElementById('g-start'),
     elScore = document.getElementById('g-score'), elBest = document.getElementById('g-best'),
-    elStars = document.getElementById('g-stars'), elMeter = document.getElementById('g-meter');
+    elStars = document.getElementById('g-stars'), elMeter = document.getElementById('g-meter'),
+    saveForm = document.getElementById('g-save'), nameIn = document.getElementById('g-name'),
+    rankList = document.getElementById('rank-list'), rankEmpty = document.getElementById('rank-empty'),
+    rankTag = document.getElementById('rank-tag');
   const ui = window.RyuUI || { store: { get() { return null; }, set() {} }, toast() {}, confetti() {} };
 
-  const imgs = { run: new Image(), fire: new Image() };
-  imgs.run.src = 'assets/ryu-tiger-avatar.jpeg';
-  imgs.fire.src = 'assets/tigre-tiguer.jpeg';
+  /* ---------- sprites ---------- */
+  const load = src => { const im = new Image(); im.src = src; return im; };
+  const spr = { run: load('assets/tiger-run.png'), jump: load('assets/tiger-jump.png'), land: load('assets/tiger-land.png') };
+  const avatar = load('assets/ryu-tiger-avatar.jpeg');
   const ready = im => im.complete && im.naturalWidth > 0;
+  const sprReady = () => ready(spr.run) && ready(spr.jump) && ready(spr.land);
+  const CELL_W = 228, CELL_H = { run: 157, jump: 162, land: 108 }, ANCH = 132;
+  let DS = .8, OS = 1.15; // escala do tigre e dos obstáculos (acompanham a altura da tela)
 
   let W = 600, H = 260, DPR = 1, GROUND = 216;
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = Math.max(280, stage.clientWidth);
-    H = Math.round(Math.max(220, Math.min(300, W * .36)));
+    H = Math.round(Math.max(250, Math.min(320, W * .36)));
     GROUND = H - 44;
+    DS = H * .00265; OS = Math.max(1, DS / .7);
+    PH = Math.round(DS * 125); PX = Math.round(115 * DS);
+    JUMP = -Math.sqrt(2 * GRAV * H * .4); // o pulo sempre cabe na tela
+    if (p && state !== 'run' && p.vy === 0) { p.x = PX; p.y = GROUND - PH; }
     canvas.style.height = H + 'px';
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (state !== 'run') draw();
   }
 
-  const GRAV = 2300, JUMP = -800, SIZE = 56;
+  const GRAV = 2300; let JUMP = -760, PH = 90, PX = 94;
   let state = 'idle', raf = 0, last = 0, t = 0;
   let p, obstacles, stars, parts, dist, speed, score, starCount, fireT, nextGap, best = 0, flash = 0;
+  let runPh = 0, airT = 0, landT = 0, jumpT = 9, lastScore = 0;
   best = parseInt(ui.store.get('ryu-best') || '0', 10) || 0;
   elBest.textContent = best;
 
   function reset() {
-    p = { x: 56, y: GROUND - SIZE, vy: 0, rot: 0 };
+    p = { x: PX, y: GROUND - PH, vy: 0 };
     obstacles = []; stars = []; parts = [];
     dist = 0; speed = 300; score = 0; starCount = 0; fireT = 0; flash = 0; t = 0;
+    runPh = 0; airT = 0; landT = 0; jumpT = 9;
     nextGap = 420; hud();
   }
   function hud() {
     elScore.textContent = score; elBest.textContent = best; elStars.textContent = starCount;
     if (elMeter) elMeter.style.setProperty('--p', (fireT > 0 ? 100 : starCount / 5 * 100) + '%');
   }
-  const onGround = () => p.y + SIZE >= GROUND - .5;
+  const onGround = () => p.y + PH >= GROUND - .5;
 
+  function dust(n, x, y, sp) {
+    for (let i = 0; i < n; i++) parts.push({ x, y, vx: Math.random() * 120 - 60 - sp * .2, vy: -Math.random() * 90, life: .4, c: '#ffffffaa', r: 3 });
+  }
   function jump() {
     if (state !== 'run') return;
-    if (onGround()) { p.vy = JUMP; for (let i = 0; i < 6; i++) parts.push({ x: p.x + SIZE / 2, y: GROUND, vx: Math.random() * 120 - 60 - speed * .2, vy: -Math.random() * 90, life: .4, c: '#ffffffaa', r: 3 }); }
+    if (onGround()) { p.vy = JUMP; jumpT = 0; landT = 0; dust(7, p.x, GROUND, speed); }
   }
 
   function spawn() {
     const type = Math.random();
     let o;
-    if (type < .4) o = { w: 26, h: 36, kind: 'spike' };
-    else if (type < .7) o = { w: 54, h: 36, kind: 'spike2' };
-    else o = { w: 30, h: 60, kind: 'block' };
+    if (type < .4) o = { w: 26 * OS, h: 36 * OS, kind: 'spike' };
+    else if (type < .7) o = { w: 54 * OS, h: 36 * OS, kind: 'spike2' };
+    else o = { w: 30 * OS, h: 60 * OS, kind: 'block' };
     o.x = W + 40; obstacles.push(o);
     if (Math.random() < .5) stars.push({ x: o.x + o.w / 2, y: GROUND - o.h - 56 - Math.random() * 26, got: false, ph: Math.random() * 6 });
     nextGap = speed * (.85 + Math.random() * .75) + o.w + 150;
@@ -62,20 +90,26 @@
 
   function startFire() {
     fireT = 6; starCount = 0; flash = 1; ui.toast('🔥 MODO FOGO! Nada te para por 6 segundos.');
-    for (let i = 0; i < 30; i++) parts.push({ x: p.x + SIZE / 2, y: p.y + SIZE / 2, vx: Math.random() * 360 - 180, vy: Math.random() * 360 - 220, life: .7, c: '#c79bff', r: 4 });
+    for (let i = 0; i < 30; i++) parts.push({ x: p.x, y: p.y + PH / 2, vx: Math.random() * 360 - 180, vy: Math.random() * 360 - 220, life: .7, c: '#c79bff', r: 4 });
   }
 
   function gameOver() {
-    state = 'over';
+    state = 'over'; lastScore = score;
     if (score > best) { best = score; ui.store.set('ryu-best', String(best)); }
     hud();
     const msg = score < 60 ? 'Aquecimento! Tenta de novo.' : score < 200 ? 'Boa corrida! Dá pra ir mais longe.' : score < 400 ? 'Que ritmo! Você pensa em cortes rápidos.' : 'Lendário! Isso sim é edição na velocidade do tigre.';
-    show('Fim de corrida', score + ' pontos. ' + msg + (score >= best && score > 0 ? ' Novo recorde! 🏆' : ''), 'Jogar de novo');
+    show('Fim de corrida', score + ' pontos. ' + msg + (score >= best && score > 0 ? ' Novo recorde! 🏆' : ''), 'Jogar de novo', score > 0);
     if (score >= best && score > 150) ui.confetti(stage.getBoundingClientRect().left + W / 2, stage.getBoundingClientRect().top + H / 2, 40);
   }
 
-  function show(title, text, btn) { ovTitle.textContent = title; ovText.textContent = text; ovBtn.firstChild.textContent = btn + ' '; overlay.classList.remove('hide'); }
-  function hide() { overlay.classList.add('hide'); }
+  function show(title, text, btn, withForm) {
+    ovTitle.textContent = title; ovText.textContent = text; ovBtn.firstChild.textContent = btn + ' '; overlay.classList.remove('hide');
+    if (saveForm) {
+      saveForm.hidden = !withForm;
+      if (withForm && nameIn) { nameIn.value = ui.store.get('ryu-name') || ''; const b = saveForm.querySelector('button'); if (b) b.disabled = false; }
+    }
+  }
+  function hide() { overlay.classList.add('hide'); if (saveForm) saveForm.hidden = true; }
 
   function start() {
     reset(); state = 'run'; hide(); stage.focus({ preventScroll: true });
@@ -87,9 +121,15 @@
     speed = Math.min(300 + score * .55, 640);
     dist += speed * dt; score = Math.floor(dist / 10);
     // física
+    const wasAir = !onGround();
     p.vy += GRAV * dt; p.y += p.vy * dt;
-    if (p.y + SIZE > GROUND) { p.y = GROUND - SIZE; p.vy = 0; p.rot = 0; }
-    else p.rot += dt * 7 * (p.vy < 0 ? 1 : 1.4) * (fireT > 0 ? 1.4 : 1);
+    if (p.y + PH > GROUND) {
+      p.y = GROUND - PH; p.vy = 0;
+      if (wasAir) { if (airT > .18) { landT = .24; dust(6, p.x, GROUND, speed); } airT = 0; }
+    }
+    if (!onGround()) { airT += dt; jumpT += dt; } else jumpT = 9;
+    if (landT > 0) landT = Math.max(0, landT - dt);
+    runPh += dt * (8 + speed / 55);
     if (fireT > 0) { fireT -= dt; if (fireT <= 0) { fireT = 0; ui.toast('O fogo acabou. Pegue mais 5 ✳!'); } }
     if (flash > 0) flash = Math.max(0, flash - dt * 2.5);
     // spawn
@@ -99,7 +139,7 @@
     obstacles.forEach(o => o.x -= speed * dt); stars.forEach(s => s.x -= speed * dt);
     obstacles = obstacles.filter(o => o.x + o.w > -20); stars = stars.filter(s => s.x > -30 && !s.got);
     // colisão
-    const hb = { x: p.x + 10, y: p.y + 8, w: SIZE - 20, h: SIZE - 14 };
+    const hb = { x: p.x - PH * .2, y: p.y + PH * .1, w: PH * .4, h: PH * .85 };
     for (const o of obstacles) {
       if (o.dead) continue;
       const ox = o.x + 4, ow = o.w - 8, oh = o.h * .86, oy = GROUND - oh;
@@ -112,17 +152,18 @@
     }
     obstacles = obstacles.filter(o => !o.dead);
     // estrelas
-    const cx = p.x + SIZE / 2, cy = p.y + SIZE / 2;
+    const cx = p.x, cy = p.y + PH / 2;
     for (const s of stars) {
       const sy = s.y + Math.sin(t * 4 + s.ph) * 4;
-      if (Math.hypot(s.x - cx, sy - cy) < SIZE / 2 + 14) {
+      if (Math.hypot(s.x - cx, sy - cy) < PH * .5 + 8) {
         s.got = true; dist += 30;
         for (let i = 0; i < 8; i++) parts.push({ x: s.x, y: sy, vx: Math.random() * 200 - 100, vy: Math.random() * 200 - 160, life: .45, c: '#9471ce', r: 3 });
         if (fireT <= 0) { starCount++; if (starCount >= 5) startFire(); }
       }
     }
     // partículas
-    if (fireT > 0 && Math.random() < .8) parts.push({ x: p.x + 8, y: p.y + SIZE * (.3 + Math.random() * .6), vx: -speed * .5 - Math.random() * 80, vy: -Math.random() * 90, life: .5, c: Math.random() < .5 ? '#b57cff' : '#e6ccff', r: 4 });
+    if (onGround() && Math.random() < .35) parts.push({ x: p.x - PH * .25, y: GROUND - 2, vx: -speed * .25 - Math.random() * 40, vy: -Math.random() * 40, life: .3, c: '#ffffff80', r: 2.4 });
+    if (fireT > 0 && Math.random() < .8) parts.push({ x: p.x - 20, y: p.y + PH * (.2 + Math.random() * .7), vx: -speed * .5 - Math.random() * 80, vy: -Math.random() * 90, life: .5, c: Math.random() < .5 ? '#b57cff' : '#e6ccff', r: 4 });
     parts.forEach(q => { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 500 * dt; q.life -= dt; });
     parts = parts.filter(q => q.life > 0);
     hud();
@@ -145,6 +186,37 @@
       for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.moveTo(x + i * w, base); ctx.lineTo(x + i * w + w / 2, base - o.h); ctx.lineTo(x + (i + 1) * w, base); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     }
   }
+
+  // escolhe a animação e o quadro do tigre
+  function pose() {
+    if (state === 'idle') return { k: 'run', i: 0 };
+    if (!onGround()) {
+      const v = p.vy;
+      let i = v < -620 ? 2 : v < -250 ? 3 : v < 120 ? 4 : v < 450 ? 5 : 6;
+      if (jumpT < .07) i = 1;
+      return { k: 'jump', i };
+    }
+    if (landT > 0) return { k: 'land', i: Math.min(4, Math.floor((.24 - landT) / .24 * 5)) };
+    return { k: 'run', i: Math.floor(runPh) % 7 };
+  }
+  function drawTiger() {
+    if (!sprReady()) {
+      // reserva enquanto os sprites carregam
+      ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y + PH / 2, 30, 0, 6.283); ctx.fillStyle = '#7a64b0'; ctx.fill(); ctx.clip();
+      if (ready(avatar)) ctx.drawImage(avatar, p.x - 30, p.y + PH / 2 - 30, 60, 60); ctx.restore(); return;
+    }
+    const { k, i } = pose(), ch = CELL_H[k], dw = CELL_W * DS, dh = ch * DS;
+    const dx = p.x - ANCH * DS, dy = p.y + PH + 3 - dh;
+    if (fireT > 0) { // rastro de fogo roxo
+      ctx.save(); ctx.globalAlpha = .22; ctx.filter = 'hue-rotate(20deg) saturate(1.6)';
+      for (let n = 3; n >= 1; n--) ctx.drawImage(spr[k], i * CELL_W, 0, CELL_W, ch, dx - n * 16, dy, dw, dh);
+      ctx.restore();
+      ctx.shadowColor = '#b57cff'; ctx.shadowBlur = 22;
+    }
+    ctx.drawImage(spr[k], i * CELL_W, 0, CELL_W, ch, dx, dy, dw, dh);
+    ctx.shadowBlur = 0;
+  }
+
   function draw() {
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, fireT > 0 ? '#c7aaf5' : '#e6dcf6'); g.addColorStop(1, fireT > 0 ? '#8e63d6' : '#c9b6ec');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -169,15 +241,10 @@
     stars.forEach(s => star(s.x, s.y + Math.sin(t * 4 + s.ph) * 4, 9, t * 2 + s.ph));
     obstacles.forEach(obstacle);
     // sombra
-    const air = Math.max(0, GROUND - (p.y + SIZE));
-    ctx.fillStyle = '#00000030'; ctx.beginPath(); ctx.ellipse(p.x + SIZE / 2, GROUND + 2, SIZE / 2 * (1 - air / 300), 5, 0, 0, 6.283); ctx.fill();
+    const air = Math.max(0, GROUND - (p.y + PH));
+    ctx.fillStyle = '#00000030'; ctx.beginPath(); ctx.ellipse(p.x, GROUND + 2, PH * .36 * (1 - Math.min(.7, air / 260)), 5, 0, 0, 6.283); ctx.fill();
     // tigre
-    const bob = onGround() && state === 'run' ? -Math.abs(Math.sin(t * 15)) * 4 : 0;
-    ctx.save(); ctx.translate(p.x + SIZE / 2, p.y + SIZE / 2 + bob); ctx.rotate(onGround() ? Math.sin(t * 15) * .07 : p.rot);
-    if (fireT > 0) { ctx.shadowColor = '#b57cff'; ctx.shadowBlur = 24; }
-    ctx.beginPath(); ctx.arc(0, 0, SIZE / 2, 0, 6.283); ctx.fillStyle = '#7a64b0'; ctx.fill(); ctx.save(); ctx.clip();
-    const im = fireT > 0 ? imgs.fire : imgs.run; if (ready(im)) ctx.drawImage(im, -SIZE / 2, -SIZE / 2, SIZE, SIZE);
-    ctx.restore(); ctx.shadowBlur = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = fireT > 0 ? '#e6ccff' : '#fff'; ctx.beginPath(); ctx.arc(0, 0, SIZE / 2, 0, 6.283); ctx.stroke(); ctx.restore();
+    drawTiger();
     // partículas
     parts.forEach(q => { ctx.globalAlpha = Math.max(0, Math.min(1, q.life * 2.2)); ctx.fillStyle = q.c; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, 6.283); ctx.fill(); }); ctx.globalAlpha = 1;
     if (flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + flash * .55 + ')'; ctx.fillRect(0, 0, W, H); }
@@ -190,6 +257,70 @@
     if (state === 'run') { draw(); raf = requestAnimationFrame(loop); } else draw();
   }
 
+  /* ---------- ranking ---------- */
+  const RK = 'ryu-rank';
+  const cleanName = s => (s || '').replace(/[<>&"'`\\\/]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14);
+  const keyOf = n => n.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'anon';
+  const localList = () => { try { const l = JSON.parse(ui.store.get(RK) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
+  function localSave(name, sc) {
+    const l = localList(), k = keyOf(name), e = l.find(x => keyOf(String(x.name)) === k);
+    if (e) { e.tries = (e.tries || 1) + 1; e.score = Math.max(e.score || 0, sc); e.name = name; }
+    else l.push({ name, score: sc, tries: 1 });
+    l.sort((a, b) => b.score - a.score);
+    ui.store.set(RK, JSON.stringify(l.slice(0, 100)));
+  }
+  const remote = RANK_URL.replace(/\/+$/, '');
+  async function rf(path, opts) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000);
+    try { const r = await fetch(remote + path, Object.assign({ signal: ctl.signal }, opts)); if (!r.ok) throw new Error(r.status); return await r.json(); }
+    finally { clearTimeout(to); }
+  }
+  async function remoteSave(name, sc) {
+    const k = keyOf(name), cur = await rf('/ranking/' + k + '.json');
+    const entry = { name, score: Math.max(sc, cur && +cur.score || 0), tries: (cur && +cur.tries || 0) + 1, t: Date.now() };
+    await rf('/ranking/' + k + '.json', { method: 'PUT', body: JSON.stringify(entry) });
+  }
+  async function getList() {
+    if (remote) {
+      try {
+        const o = await rf('/ranking.json');
+        const l = o ? Object.values(o).filter(x => x && typeof x.score === 'number').map(x => ({ name: String(x.name || '?'), score: x.score, tries: x.tries || 1 })) : [];
+        return { list: l, global: true };
+      } catch (e) { /* cai para o ranking local */ }
+    }
+    return { list: localList(), global: false, offline: !!remote };
+  }
+  async function renderRank() {
+    if (!rankList) return;
+    const { list, global, offline } = await getList();
+    const me = keyOf(ui.store.get('ryu-name') || '');
+    list.sort((a, b) => b.score - a.score || a.tries - b.tries);
+    const top = list.slice(0, 10);
+    rankList.replaceChildren(...top.map((e, i) => {
+      const li = document.createElement('li');
+      if (me && keyOf(String(e.name)) === me) li.className = 'me';
+      const pos = document.createElement('span'); pos.className = 'rk-pos'; pos.textContent = i < 3 ? ['🥇', '🥈', '🥉'][i] : String(i + 1);
+      const nm = document.createElement('span'); nm.className = 'rk-name'; nm.textContent = e.name;
+      const tr = document.createElement('span'); tr.className = 'rk-tries'; tr.textContent = e.tries + (e.tries === 1 ? ' tentativa' : ' tentativas');
+      const sc = document.createElement('b'); sc.className = 'rk-score'; sc.textContent = e.score;
+      li.append(pos, nm, tr, sc); return li;
+    }));
+    if (rankEmpty) rankEmpty.hidden = top.length > 0;
+    if (rankTag) rankTag.textContent = global ? 'RANKING GLOBAL' : offline ? 'SEM CONEXÃO · NESTE NAVEGADOR' : 'NESTE NAVEGADOR';
+  }
+  if (saveForm) saveForm.addEventListener('submit', async e => {
+    e.preventDefault(); e.stopPropagation();
+    const name = cleanName(nameIn.value);
+    if (!name) { nameIn.focus(); ui.toast('Digite um apelido para entrar no ranking.'); return; }
+    const btn = saveForm.querySelector('button'); if (btn) btn.disabled = true;
+    ui.store.set('ryu-name', name);
+    localSave(name, lastScore);
+    if (remote) { try { await remoteSave(name, lastScore); } catch (err) { ui.toast('Salvo só neste navegador (ranking global fora do ar).'); } }
+    saveForm.hidden = true; ui.toast('🏆 ' + name + ' entrou no ranking com ' + lastScore + ' pontos!');
+    renderRank();
+  });
+  ['keydown', 'keyup', 'pointerdown'].forEach(ev => saveForm && saveForm.addEventListener(ev, e => e.stopPropagation()));
+
   /* ---------- controles ---------- */
   ovBtn.addEventListener('click', e => { e.stopPropagation(); start(); });
   canvas.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
@@ -200,14 +331,14 @@
     else if (document.activeElement === stage && state !== 'run') { e.preventDefault(); start(); }
   });
   // pausa quando sai da tela ou da aba
-  function pause() { if (state === 'run') { state = 'paused'; cancelAnimationFrame(raf); show('Pausado', 'Toque em continuar para voltar de onde parou.', 'Continuar'); } }
+  function pause() { if (state === 'run') { state = 'paused'; cancelAnimationFrame(raf); show('Pausado', 'Toque em continuar para voltar de onde parou.', 'Continuar', false); } }
   function resume() { state = 'run'; hide(); last = performance.now(); raf = requestAnimationFrame(loop); }
   ovBtn.addEventListener('click', e => { if (state === 'paused') { e.stopImmediatePropagation(); resume(); } }, true);
   if ('IntersectionObserver' in window) new IntersectionObserver(es => { if (!es[0].isIntersecting) pause(); }, { threshold: .2 }).observe(stage);
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
   addEventListener('resize', resize);
 
-  reset(); resize();
-  const wait = setInterval(() => { draw(); if (ready(imgs.run)) clearInterval(wait); }, 200);
+  reset(); resize(); renderRank();
+  const wait = setInterval(() => { draw(); if (sprReady()) clearInterval(wait); }, 200);
   draw();
 })();
