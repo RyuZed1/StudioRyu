@@ -7,7 +7,7 @@
   <link rel="icon" href="assets/ryu-tiger-avatar.jpeg">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"><script src="script.js" defer></script><script src="game.js" defer></script>
+  <link rel="stylesheet" href="style.css"><script src="script.js?v=4" defer></script><script src="profile.js?v=4" defer></script><script src="sprites.js?v=4" defer></script><script src="game.js?v=4" defer></script>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -66,7 +66,7 @@
     <section class="section wrap" id="jogo"><div class="section-heading reveal"><div><span class="eyebrow-number">05 / PAUSA CRIATIVA</span><h2>Corra com<br>o <span class="purple">Ryu.</span></h2></div><p>Pule os glitches da timeline e pegue 5 ✳<br>para ativar o Modo Fogo.</p></div>
       <div class="game-card reveal"><div class="game-hud"><span>PONTOS<b id="g-score">0</b></span><span>RECORDE<b id="g-best">0</b></span><span>✳<b id="g-stars">0</b>/5</span><span class="fire-meter">MODO FOGO<i id="g-meter"></i></span></div>
         <div class="game-stage" id="game-stage" tabindex="0" aria-label="Jogo Ryu Run. Pressione espaço ou seta para cima para pular."><canvas id="game" width="900" height="260"></canvas>
-          <div class="game-overlay" id="game-overlay"><h3 id="g-title">Ryu Run</h3><p id="g-text">Corra pela timeline, pule os glitches e pegue 5 ✳ para virar o tigre de fogo roxo.</p><form class="g-save" id="g-save" hidden autocomplete="off"><input id="g-name" maxlength="14" placeholder="Seu apelido" aria-label="Seu apelido para o ranking"><button type="submit" class="btn light-btn">Salvar no ranking <span>🏆</span></button></form><button type="button" class="btn light-btn" id="g-start">Jogar <span>▶</span></button></div></div>
+          <div class="game-overlay" id="game-overlay"><h3 id="g-title">Ryu Run</h3><p id="g-text">Corra pela timeline, pule os glitches e pegue 5 ✳ para virar o tigre de fogo roxo.</p><form class="g-save" id="g-save" hidden autocomplete="off"><div class="g-who" id="g-who"></div><input id="g-name" maxlength="60" placeholder="Sua frase para o ranking (opcional)" aria-label="Sua frase para o ranking"><button type="submit" class="btn light-btn" id="g-submit">Salvar no ranking <span>🏆</span></button></form><button type="button" class="btn light-btn" id="g-start">Jogar <span>▶</span></button></div></div>
         <div class="game-help"><span>ESPAÇO · ↑ · TOQUE NA TELA = PULAR</span><span>5 ✳ = 6 SEGUNDOS DE FOGO (ATRAVESSA TUDO)</span></div>
         <div class="rank" id="rank"><div class="rank-head"><div><span class="eyebrow-number">RANKING</span><h3>Quem corre mais</h3></div><span class="rank-tag" id="rank-tag">NESTE NAVEGADOR</span></div><ol class="rank-list" id="rank-list"></ol><p class="rank-empty" id="rank-empty">Ninguém correu ainda. Seja o primeiro do ranking! 🐯</p></div></div>
     </section>

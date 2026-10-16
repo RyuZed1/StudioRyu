@@ -46,3 +46,9 @@ Depois de 1 a 2 minutos, atualize o site com Ctrl + F5.
 
 ## Antes de anunciar
 - Cursos mostram "Em breve" no lugar do preço; quando abrir as vendas, troque por `<div class="price">R$ ...</div>`.
+
+## Login / perfil (profile.js)
+- Botão "Entrar" no topo de todas as páginas: apelido, foto (enviada do aparelho) e uma frase.
+- O perfil fica salvo no navegador e aparece no ranking do Ryu Run (foto, nome e frase embaixo).
+- Login com Google (opcional): coloque o ID do cliente OAuth em `GOOGLE_CLIENT_ID` no topo do `profile.js` (instruções no próprio arquivo).
+- Para o ranking global com fotos, use o Firebase do `game.js` (`RANK_URL`). Nas regras, limite o tamanho de `photo` (ex.: `".validate": "newData.child('photo').val().length < 20000"`).

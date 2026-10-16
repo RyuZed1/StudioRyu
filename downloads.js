@@ -86,7 +86,7 @@
       b.append(el('b', null, String(countIn(c.id))));
       b.addEventListener('click', () => select(c.id, false)); return b;
     });
-    const cb = el('button', 'dl-chip cart-chip' + (cat === 'cart' ? ' on' : ''), '🛒 Meu carrinho'); cb.type = 'button';
+    const cb = el('button', 'dl-chip cart-chip' + (cat === 'cart' ? ' on' : ''), 'Carrinho'); cb.type = 'button';
     cb.append(el('b', null, String(cart.length))); cb.addEventListener('click', () => select('cart', false));
     chips.replaceChildren(...list, cb);
   }
@@ -95,7 +95,7 @@
   function renderInfo() {
     let c, title, text, ico;
     if (cat === 'all') { c = '#9471ce'; title = 'Todos os downloads'; text = 'Veja tudo que a Ryu preparou, de presets a aplicativos. Use a busca ou escolha uma categoria.'; ico = '✳'; }
-    else if (cat === 'cart') { c = '#7a53c0'; title = 'Meu carrinho'; text = cart.length ? 'Os arquivos que você separou. Eles ficam salvos neste navegador.' : 'Seu carrinho está vazio. Toque no 🛒 de um arquivo para guardar aqui.'; ico = '🛒'; }
+    else if (cat === 'cart') { c = '#7a53c0'; title = 'Meu carrinho'; text = cart.length ? 'Os arquivos que você separou. Eles ficam salvos neste navegador.' : 'Seu carrinho está vazio. Toque no + de um arquivo para guardar aqui.'; ico = '🛒'; }
     else { const k = catById[cat]; c = k.c; title = k.name; text = k.desc; ico = k.ico; }
     info.style.setProperty('--c', c); info.dataset.ico = ico;
     const left = el('div'); left.append(el('h3', null, title), el('p', null, text));
@@ -115,18 +115,21 @@
   }
   function card(it, idx) {
     const k = catById[it.cat], a = el('article', 'dl-item'); a.style.setProperty('--c', k.c); a.style.setProperty('--i', Math.min(idx, 12));
-    const top = el('div', 'dl-top'), cb = el('button', 'dl-cartbtn' + (cart.includes(it.id) ? ' on' : ''), cart.includes(it.id) ? '✓' : '🛒'); cb.type = 'button';
-    cb.setAttribute('aria-label', cart.includes(it.id) ? 'Remover do carrinho' : 'Adicionar ao carrinho'); cb.setAttribute('aria-pressed', String(cart.includes(it.id)));
+    const ready = !it.soon && it.href, inCart = cart.includes(it.id);
+    const body = el('div', 'dl-body'), tags = el('div', 'dl-tags'); it.tags.forEach(t => tags.append(el('span', null, t)));
+    const head = el('div', 'dl-head'); head.append(el('h3', null, it.title), el('span', 'dl-cat', k.name));
+    body.append(head, el('p', null, it.desc), tags);
+    const meta = el('span', 'dl-meta' + (ready ? '' : ' soon'), ready ? (it.meta || 'arquivo').toUpperCase() : 'EM BREVE');
+    const acts = el('div', 'dl-acts');
+    const cb = el('button', 'dl-cartbtn' + (inCart ? ' on' : ''), inCart ? '✓' : '+'); cb.type = 'button';
+    cb.title = inCart ? 'Remover do carrinho' : 'Guardar no carrinho';
+    cb.setAttribute('aria-label', cb.title); cb.setAttribute('aria-pressed', String(inCart));
     cb.addEventListener('click', () => toggleCart(it));
-    top.append(el('span', 'dl-ico', k.ico), el('span', 'dl-cat', k.name.toUpperCase()), cb);
-    const tags = el('div', 'dl-tags'); it.tags.forEach(t => tags.append(el('span', null, t)));
-    const foot = el('div', 'dl-foot'), ready = !it.soon && it.href;
-    foot.append(el('span', 'dl-meta' + (ready ? '' : ' soon'), ready ? (it.meta || 'ARQUIVO').toUpperCase() : 'EM BREVE'));
     let btn;
-    if (ready) { btn = el('a', 'dl-btn', 'Baixar ↓'); btn.href = it.href; btn.setAttribute('download', ''); btn.target = '_blank'; btn.rel = 'noreferrer'; }
-    else { btn = el('a', 'dl-btn ghost', 'Avisar quando sair ↗'); btn.href = WA + encodeURIComponent('Oi Enzo! Quero ser avisado quando "' + it.title + '" estiver disponível nos downloads grátis da Studio.Ryu.'); btn.target = '_blank'; btn.rel = 'noreferrer'; }
-    foot.append(btn);
-    a.append(top, el('h3', null, it.title), el('p', null, it.desc), tags, foot);
+    if (ready) { btn = el('a', 'dl-btn', 'Baixar'); btn.href = it.href; btn.setAttribute('download', ''); btn.target = '_blank'; btn.rel = 'noreferrer'; }
+    else { btn = el('a', 'dl-btn ghost', 'Avisar'); btn.title = 'Receber aviso no WhatsApp quando sair'; btn.href = WA + encodeURIComponent('Oi Enzo! Quero ser avisado quando "' + it.title + '" estiver disponível nos downloads grátis da Studio.Ryu.'); btn.target = '_blank'; btn.rel = 'noreferrer'; }
+    acts.append(cb, btn);
+    a.append(el('span', 'dl-ico', k.ico), body, meta, acts);
     a.addEventListener('pointermove', spot);
     return a;
   }
@@ -139,7 +142,7 @@
       m.addEventListener('click', () => { const b = el('span', 'mascot-bubble', m.dataset.says.split('|')[Math.floor(Math.random() * 2)]); m.append(b); setTimeout(() => b.remove(), 2600); m.classList.remove('hop'); void m.offsetWidth; m.classList.add('hop'); });
       const btn = el('button', 'btn dark-btn', 'Limpar filtros'); btn.type = 'button'; btn.append(el('span', null, '↺'));
       btn.addEventListener('click', () => { q.value = ''; query = ''; select('all', false); });
-      box.append(m, el('h3', null, cat === 'cart' ? 'Carrinho vazio' : 'Nada encontrado'), el('p', null, cat === 'cart' ? 'Adicione arquivos com o botão 🛒 e eles aparecem aqui.' : 'Nenhum arquivo bate com essa busca. Tente outra palavra ou categoria.'), btn);
+      box.append(m, el('h3', null, cat === 'cart' ? 'Carrinho vazio' : 'Nada encontrado'), el('p', null, cat === 'cart' ? 'Adicione arquivos com o botão + e eles aparecem aqui.' : 'Nenhum arquivo bate com essa busca. Tente outra palavra ou categoria.'), btn);
       grid.replaceChildren(box); return;
     }
     grid.replaceChildren(...list.map(card));
@@ -153,7 +156,7 @@
     saveCart(); refresh(false);
   }
   function renderBar() {
-    const n = cart.length; barText.textContent = '🛒 ' + n + (n === 1 ? ' item no carrinho' : ' itens no carrinho');
+    const n = cart.length; barText.textContent = n + (n === 1 ? ' item guardado' : ' itens guardados');
     bar.classList.toggle('show', n > 0 && cat !== 'cart');
   }
   $('#cart-view').addEventListener('click', () => select('cart', true));

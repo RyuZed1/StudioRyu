@@ -26,11 +26,12 @@
 
   /* ---------- sprites ---------- */
   const load = src => { const im = new Image(); im.src = src; return im; };
-  const spr = { run: load('assets/tiger-run.png'), jump: load('assets/tiger-jump.png'), land: load('assets/tiger-land.png') };
+  const SP = window.RYU_SPRITES || {};
+  const spr = { run: load(SP.run || 'assets/tiger-run.png'), jump: load(SP.jump || 'assets/tiger-jump.png'), land: load(SP.land || 'assets/tiger-land.png') };
   const avatar = load('assets/ryu-tiger-avatar.jpeg');
   const ready = im => im.complete && im.naturalWidth > 0;
   const sprReady = () => ready(spr.run) && ready(spr.jump) && ready(spr.land);
-  const CELL_W = 228, CELL_H = { run: 162, jump: 162, land: 162 }, FRAME_COUNT = { run: 7, jump: 7, land: 5 }, ANCH = 132;
+  const CELL_W = 168, CELL_H = { run: 147, jump: 154, land: 142 }, ANCH = 97, NF = { run: 10, jump: 7, land: 4 };
   let DS = .8, OS = 1.15; // escala do tigre e dos obstáculos (acompanham a altura da tela)
 
   let W = 600, H = 260, DPR = 1, GROUND = 216;
@@ -106,7 +107,7 @@
     ovTitle.textContent = title; ovText.textContent = text; ovBtn.firstChild.textContent = btn + ' '; overlay.classList.remove('hide');
     if (saveForm) {
       saveForm.hidden = !withForm;
-      if (withForm && nameIn) { nameIn.value = ui.store.get('ryu-name') || ''; const b = saveForm.querySelector('button'); if (b) b.disabled = false; }
+      if (withForm && nameIn) { paintWho(); if (submitBtn) submitBtn.disabled = false; }
     }
   }
   function hide() { overlay.classList.add('hide'); if (saveForm) saveForm.hidden = true; }
@@ -129,7 +130,7 @@
     }
     if (!onGround()) { airT += dt; jumpT += dt; } else jumpT = 9;
     if (landT > 0) landT = Math.max(0, landT - dt);
-    runPh += dt * (8 + speed / 55);
+    runPh += dt * (11 + speed / 45);
     if (fireT > 0) { fireT -= dt; if (fireT <= 0) { fireT = 0; ui.toast('O fogo acabou. Pegue mais 5 ✳!'); } }
     if (flash > 0) flash = Math.max(0, flash - dt * 2.5);
     // spawn
@@ -191,20 +192,13 @@
   function pose() {
     if (state === 'idle') return { k: 'run', i: 0 };
     if (!onGround()) {
-      // Usa os 7 quadros do pulo em ordem: impulsão, subida, ápice e descida.
       const v = p.vy;
-      let i;
-      if (jumpT < .055) i = 0;
-      else if (v < -650) i = 1;
-      else if (v < -400) i = 2;
-      else if (v < -140) i = 3;
-      else if (v < 120) i = 4;
-      else if (v < 430) i = 5;
-      else i = 6;
+      let i = v < -500 ? 2 : v < 150 ? 3 : v < 450 ? 4 : v < 750 ? 5 : 6;
+      if (jumpT < .07) i = 1;
       return { k: 'jump', i };
     }
-    if (landT > 0) return { k: 'land', i: Math.min(FRAME_COUNT.land - 1, Math.floor((.24 - landT) / .24 * FRAME_COUNT.land)) };
-    return { k: 'run', i: Math.floor(runPh) % FRAME_COUNT.run };
+    if (landT > 0) return { k: 'land', i: Math.min(NF.land - 1, Math.floor((.24 - landT) / .24 * NF.land)) };
+    return { k: 'run', i: Math.floor(runPh) % NF.run };
   }
   function drawTiger() {
     if (!sprReady()) {
@@ -266,13 +260,15 @@
 
   /* ---------- ranking ---------- */
   const RK = 'ryu-rank';
-  const cleanName = s => (s || '').replace(/[<>&"'`\\\/]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14);
-  const keyOf = n => n.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'anon';
+  const RP = window.RyuProfile;
+  const keyOf = n => String(n).toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'anon';
+  const safePhoto = p => (RP ? RP.okPhoto(p) : false) ? p : '';
+  const entryKey = e => String(e.id || keyOf(e.name));
   const localList = () => { try { const l = JSON.parse(ui.store.get(RK) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
-  function localSave(name, sc) {
-    const l = localList(), k = keyOf(name), e = l.find(x => keyOf(String(x.name)) === k);
-    if (e) { e.tries = (e.tries || 1) + 1; e.score = Math.max(e.score || 0, sc); e.name = name; }
-    else l.push({ name, score: sc, tries: 1 });
+  function localSave(p, bio, sc) {
+    const l = localList(), k = String(p.id), e = l.find(x => entryKey(x) === k);
+    if (e) { e.tries = (e.tries || 1) + 1; e.score = Math.max(e.score || 0, sc); e.name = p.name; e.photo = p.photo; e.bio = bio; }
+    else l.push({ id: p.id, name: p.name, photo: p.photo, bio, score: sc, tries: 1 });
     l.sort((a, b) => b.score - a.score);
     ui.store.set(RK, JSON.stringify(l.slice(0, 100)));
   }
@@ -282,16 +278,16 @@
     try { const r = await fetch(remote + path, Object.assign({ signal: ctl.signal }, opts)); if (!r.ok) throw new Error(r.status); return await r.json(); }
     finally { clearTimeout(to); }
   }
-  async function remoteSave(name, sc) {
-    const k = keyOf(name), cur = await rf('/ranking/' + k + '.json');
-    const entry = { name, score: Math.max(sc, cur && +cur.score || 0), tries: (cur && +cur.tries || 0) + 1, t: Date.now() };
+  async function remoteSave(p, bio, sc) {
+    const k = String(p.id), cur = await rf('/ranking/' + k + '.json');
+    const entry = { id: k, name: p.name, photo: p.photo || '', bio, score: Math.max(sc, cur && +cur.score || 0), tries: (cur && +cur.tries || 0) + 1, t: Date.now() };
     await rf('/ranking/' + k + '.json', { method: 'PUT', body: JSON.stringify(entry) });
   }
   async function getList() {
     if (remote) {
       try {
         const o = await rf('/ranking.json');
-        const l = o ? Object.values(o).filter(x => x && typeof x.score === 'number').map(x => ({ name: String(x.name || '?'), score: x.score, tries: x.tries || 1 })) : [];
+        const l = o ? Object.values(o).filter(x => x && typeof x.score === 'number') : [];
         return { list: l, global: true };
       } catch (e) { /* cai para o ranking local */ }
     }
@@ -300,30 +296,57 @@
   async function renderRank() {
     if (!rankList) return;
     const { list, global, offline } = await getList();
-    const me = keyOf(ui.store.get('ryu-name') || '');
-    list.sort((a, b) => b.score - a.score || a.tries - b.tries);
+    const prof = RP && RP.get(), me = prof ? String(prof.id) : '';
+    list.sort((a, b) => b.score - a.score || (a.tries || 1) - (b.tries || 1));
     const top = list.slice(0, 10);
     rankList.replaceChildren(...top.map((e, i) => {
+      const name = String(e.name || '?').slice(0, 14), tries = +e.tries || 1, bio = String(e.bio || '').slice(0, 60);
       const li = document.createElement('li');
-      if (me && keyOf(String(e.name)) === me) li.className = 'me';
+      if (me && entryKey(e) === me) li.className = 'me';
+      li.style.animationDelay = i * 40 + 'ms';
       const pos = document.createElement('span'); pos.className = 'rk-pos'; pos.textContent = i < 3 ? ['🥇', '🥈', '🥉'][i] : String(i + 1);
-      const nm = document.createElement('span'); nm.className = 'rk-name'; nm.textContent = e.name;
-      const tr = document.createElement('span'); tr.className = 'rk-tries'; tr.textContent = e.tries + (e.tries === 1 ? ' tentativa' : ' tentativas');
-      const sc = document.createElement('b'); sc.className = 'rk-score'; sc.textContent = e.score;
-      li.append(pos, nm, tr, sc); return li;
+      const av = RP ? RP.avatar({ name, photo: safePhoto(e.photo) }, 42) : document.createElement('span');
+      const who = document.createElement('span'); who.className = 'rk-who';
+      const nm = document.createElement('b'); nm.className = 'rk-name'; nm.textContent = name; who.append(nm);
+      if (bio) { const q = document.createElement('em'); q.className = 'rk-bio'; q.textContent = '“' + bio + '”'; who.append(q); }
+      const tr = document.createElement('span'); tr.className = 'rk-tries'; tr.textContent = tries + (tries === 1 ? ' tentativa' : ' tentativas');
+      const sc = document.createElement('b'); sc.className = 'rk-score'; sc.textContent = Math.round(+e.score) || 0;
+      li.append(pos, av, who, tr, sc); return li;
     }));
     if (rankEmpty) rankEmpty.hidden = top.length > 0;
     if (rankTag) rankTag.textContent = global ? 'RANKING GLOBAL' : offline ? 'SEM CONEXÃO · NESTE NAVEGADOR' : 'NESTE NAVEGADOR';
   }
+
+  /* quem está salvando: perfil logado ou convite para entrar */
+  const whoBox = document.getElementById('g-who'), submitBtn = document.getElementById('g-submit');
+  function paintWho() {
+    if (!whoBox) return;
+    const p = RP && RP.get(); whoBox.replaceChildren();
+    nameIn.hidden = submitBtn.hidden = !p;
+    if (p) {
+      const t = document.createElement('span'); t.className = 'g-who-t';
+      const n = document.createElement('b'); n.textContent = p.name;
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'g-link'; c.textContent = 'trocar perfil';
+      c.addEventListener('click', () => RP.open());
+      t.append(n, c); whoBox.append(RP.avatar(p, 40), t);
+      if (!nameIn.dataset.touched) nameIn.value = p.bio || '';
+    } else {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn light-btn'; b.textContent = 'Entrar para salvar no ranking ';
+      const sp = document.createElement('span'); sp.textContent = '☺'; b.append(sp);
+      b.addEventListener('click', () => RP && RP.open());
+      whoBox.append(b);
+    }
+  }
+  if (nameIn) nameIn.addEventListener('input', () => { nameIn.dataset.touched = '1'; });
+  if (RP) RP.onChange(() => { paintWho(); renderRank(); });
   if (saveForm) saveForm.addEventListener('submit', async e => {
     e.preventDefault(); e.stopPropagation();
-    const name = cleanName(nameIn.value);
-    if (!name) { nameIn.focus(); ui.toast('Digite um apelido para entrar no ranking.'); return; }
-    const btn = saveForm.querySelector('button'); if (btn) btn.disabled = true;
-    ui.store.set('ryu-name', name);
-    localSave(name, lastScore);
-    if (remote) { try { await remoteSave(name, lastScore); } catch (err) { ui.toast('Salvo só neste navegador (ranking global fora do ar).'); } }
-    saveForm.hidden = true; ui.toast('🏆 ' + name + ' entrou no ranking com ' + lastScore + ' pontos!');
+    const p = RP && RP.get(); if (!p) { RP && RP.open(); return; }
+    const bio = RP.clean(nameIn.value, 60);
+    if (submitBtn) submitBtn.disabled = true;
+    localSave(p, bio, lastScore);
+    if (remote) { try { await remoteSave(p, bio, lastScore); } catch (err) { ui.toast('Salvo só neste navegador (ranking global fora do ar).'); } }
+    saveForm.hidden = true; ui.toast('🏆 ' + p.name + ' entrou no ranking com ' + lastScore + ' pontos!');
     renderRank();
   });
   ['keydown', 'keyup', 'pointerdown'].forEach(ev => saveForm && saveForm.addEventListener(ev, e => e.stopPropagation()));
