@@ -30,7 +30,7 @@
   const avatar = load('assets/ryu-tiger-avatar.jpeg');
   const ready = im => im.complete && im.naturalWidth > 0;
   const sprReady = () => ready(spr.run) && ready(spr.jump) && ready(spr.land);
-  const CELL_W = 228, CELL_H = { run: 157, jump: 162, land: 108 }, ANCH = 132;
+  const CELL_W = 228, CELL_H = { run: 162, jump: 162, land: 162 }, FRAME_COUNT = { run: 7, jump: 7, land: 5 }, ANCH = 132;
   let DS = .8, OS = 1.15; // escala do tigre e dos obstáculos (acompanham a altura da tela)
 
   let W = 600, H = 260, DPR = 1, GROUND = 216;
@@ -191,13 +191,20 @@
   function pose() {
     if (state === 'idle') return { k: 'run', i: 0 };
     if (!onGround()) {
+      // Usa os 7 quadros do pulo em ordem: impulsão, subida, ápice e descida.
       const v = p.vy;
-      let i = v < -620 ? 2 : v < -250 ? 3 : v < 120 ? 4 : v < 450 ? 5 : 6;
-      if (jumpT < .07) i = 1;
+      let i;
+      if (jumpT < .055) i = 0;
+      else if (v < -650) i = 1;
+      else if (v < -400) i = 2;
+      else if (v < -140) i = 3;
+      else if (v < 120) i = 4;
+      else if (v < 430) i = 5;
+      else i = 6;
       return { k: 'jump', i };
     }
-    if (landT > 0) return { k: 'land', i: Math.min(4, Math.floor((.24 - landT) / .24 * 5)) };
-    return { k: 'run', i: Math.floor(runPh) % 7 };
+    if (landT > 0) return { k: 'land', i: Math.min(FRAME_COUNT.land - 1, Math.floor((.24 - landT) / .24 * FRAME_COUNT.land)) };
+    return { k: 'run', i: Math.floor(runPh) % FRAME_COUNT.run };
   }
   function drawTiger() {
     if (!sprReady()) {
